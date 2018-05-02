@@ -65,14 +65,14 @@ describe("os", () => {
 	it("not in GFW sync", () => {
 		timezone = "America/New_York";
 		geo = "44";
-		assert.ifError(os.sync());
+		assert.equal(os.sync(), false);
 	});
 
 	it("not in GFW Promise", () => {
 		timezone = "America/New_York";
 		geo = "44";
 		return os.async().then(inGFW => {
-			assert.ifError(inGFW);
+			assert.equal(inGFW, false);
 		});
 	});
 
@@ -82,7 +82,7 @@ describe("os", () => {
 		return os.async((error, inGFW) => {
 			try {
 				assert.ifError(error);
-				assert.ifError(inGFW);
+				assert.equal(inGFW, false);
 				cb();
 			} catch (ex) {
 				cb(ex);
@@ -129,7 +129,7 @@ describe("os", () => {
 		assert.ifError(called["sync"]);
 		const result = os.sync();
 		assert.ok(called["sync"]);
-		called["sync"] = false;
+		called["sync"] = null;
 		assert.equal(os.sync(), result);
 		assert.ifError(called["sync"]);
 		await os.async().then(inGFW => {

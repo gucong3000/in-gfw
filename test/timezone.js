@@ -61,25 +61,28 @@ describe("timezone", () => {
 			assert.equal(tz, "MOCK");
 		});
 	});
-	it("timezone with `findLocaltime()`", async () => {
-		const tzfs = {};
-		for (let i = 1; i < 9; i++) {
-			let file = String(i);
-			tzfs[file] = file;
-			file = file.repeat(i);
-			tzfs[file] = file;
-		}
-		mock({
-			"/etc/localtime": "7",
-			"/usr/share/zoneinfo/mock": tzfs,
+
+	if (parseInt(process.versions.node) < 10) {
+		it("timezone with `findLocaltime()`", async () => {
+			const tzfs = {};
+			for (let i = 1; i < 9; i++) {
+				let file = String(i);
+				tzfs[file] = file;
+				file = file.repeat(i);
+				tzfs[file] = file;
+			}
+			mock({
+				"/etc/localtime": "7",
+				"/usr/share/zoneinfo/mock": tzfs,
+			});
+			await timezoneAsync().then(tz => {
+				assert.equal(tz, "mock/7");
+			});
+			await timezoneSync().then(tz => {
+				assert.equal(tz, "mock/7");
+			});
 		});
-		await timezoneAsync().then(tz => {
-			assert.equal(tz, "mock/7");
-		});
-		await timezoneSync().then(tz => {
-			assert.equal(tz, "mock/7");
-		});
-	});
+	}
 
 	it("cannot determine this system's timezone", cb => {
 		const tzfs = {};
