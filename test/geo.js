@@ -74,7 +74,6 @@ describe("geo", () => {
 		});
 		geoAsync = promisify(geo.async);
 		geoSync = promisify(geo.sync);
-		delete process.env.TZ;
 	});
 
 	afterEach(() => {
@@ -142,4 +141,22 @@ describe("geo", () => {
 			});
 		});
 	});
+
+	if (process.platform === "win32") {
+		describe("win32", () => {
+			before(() => {
+				delete require.cache[require.resolve("../lib/geo")];
+
+				const geo = require("../lib/geo");
+				geoAsync = promisify(geo.async);
+				geoSync = promisify(geo.sync);
+			});
+			it("should not throw error for geo.async", () => {
+				return geoAsync();
+			});
+			it("should not throw error for geo.sync", () => {
+				return geoSync();
+			});
+		});
+	}
 });
