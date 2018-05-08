@@ -64,7 +64,7 @@
     "eslint-plugin-promise": "^3.7.0",
     "eslint-plugin-standard": "^3.1.0",
     "mocha": "^5.1.1",
-    "mock-fs": "^4.4.2",
+    "mock-fs": "^4.5.0",
     "nyc": "^11.7.1",
     "proxyquire": "^2.0.1",
     "util-promisify": "^2.1.0"
