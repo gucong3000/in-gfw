@@ -6,61 +6,91 @@ const path = require("path").win32;
 const EventEmitter = require("events");
 const Buffer = require("buffer").Buffer;
 const proxyquire = require("proxyquire");
-const childProcessMock = {
-	spawnSync: function (command, args) {
-		if (command === "reg.exe" && /^QUERY$/.test(args[0])) {
-			const key = args[1];
-			const valueName = args[3];
-			const value = regMock[path.join(key, valueName)];
-			if (value) {
-				return {
-					stdout: [
-						key + "\n",
-						valueName,
-						"REG_SZ",
-						value,
-					].join("\t"),
-					stderr: "",
-					status: 0,
-				};
-			} else {
-				return {
-					stderr: "The system was unable to find the specified registry key or value.",
-					status: 1,
-				};
-			}
-		}
-	},
-	spawn: function (command, args, callback) {
-		if (command === "reg.exe" && /^QUERY$/.test(args[0])) {
-			const cp = new EventEmitter();
-			const key = args[1];
-			const valueName = args[3];
-			const value = regMock[path.join(key, valueName)];
-			if (value) {
-				cp.stdout = new EventEmitter();
-			} else {
-				cp.stderr = new EventEmitter();
-			}
 
-			process.nextTick(() => {
-				if (value) {
-					cp.stdout.emit("data", Buffer.from([
-						key + "\n",
-						valueName,
-						"REG_SZ",
-						value,
-					].join("\t")));
-					cp.emit("exit", 0);
-				} else {
-					cp.stderr.emit("data", Buffer.from("The system was unable to find the specified registry key or value."));
-					cp.emit("exit", 1);
-				}
-			});
-			return cp;
+function spawnSync (command, args, options) {
+	let key;
+	let valueName;
+	let stdout;
+	let stderr;
+	let error;
+	const encoding = options && options.encoding;
+
+	if (command === "powershell.exe") {
+		const arg = args.find(arg => arg.startsWith("&"));
+		key = arg.match(/"Registry::(.+?)"/)[1];
+		valueName = arg.match(/\s+-Name\s+(\w+)/)[1];
+	} else if (command === "reg.exe" && /^QUERY$/.test(args[0])) {
+		key = args[1];
+		valueName = args[3];
+	} else {
+		return;
+	}
+
+	const value = regMock[path.join(key, valueName)];
+	if (value) {
+		if (typeof value === "function") {
+			return value(command, key, valueName);
+		} else if (command === "reg.exe") {
+			stdout = [
+				key + "\n",
+				valueName,
+				"REG_SZ",
+				value,
+			].join("\t");
+		} else {
+			stdout = value + "\r\n";
 		}
-	},
-};
+	} else if (command === "reg.exe") {
+		stderr = "The system was unable to find the specified registry key or value.";
+	} else {
+		stderr = `Get-ItemProperty : Cannot find path '${key}' because it does not exist.`;
+	}
+
+	stdout = stdout && Buffer.from(stdout);
+	stderr = stderr && Buffer.from(stderr);
+
+	if (encoding && encoding !== "buffer") {
+		stdout = stdout && stdout.toString(encoding);
+		stderr = stderr && stderr.toString(encoding);
+	}
+
+	return {
+		error,
+		stdout,
+		stderr,
+		status: value && !error ? 0 : 1,
+	};
+}
+
+function spawn (command, args, options) {
+	const cp = new EventEmitter();
+	const result = spawnSync(command, args, {
+		encoding: "buffer",
+	});
+
+	if (result.stdout) {
+		cp.stdout = new EventEmitter();
+	}
+
+	if (result.stderr) {
+		cp.stderr = new EventEmitter();
+	}
+
+	process.nextTick(() => {
+		if (result.error) {
+			cp.emit("error", result.error);
+		}
+		if (result.stdout) {
+			cp.stdout.emit("data", result.stdout);
+		}
+		if (result.stderr) {
+			cp.stderr.emit("data", result.stderr);
+		}
+		cp.emit("exit", result.status);
+	});
+	return cp;
+}
+
 let geoAsync;
 let geoSync;
 let regMock = {};
@@ -70,7 +100,10 @@ describe("geo", () => {
 		delete require.cache[require.resolve("../lib/geo")];
 
 		const geo = proxyquire("../lib/geo", {
-			"child_process": childProcessMock,
+			"child_process": {
+				spawnSync,
+				spawn,
+			},
 		});
 		geoAsync = promisify(geo.async);
 		geoSync = promisify(geo.sync);
@@ -100,10 +133,11 @@ describe("geo", () => {
 		});
 	});
 
-	it("The system was unable to find the specified registry key or value.", cb => {
+	it("unable to find registry key or value.", cb => {
 		geoSync((error, result) => {
 			try {
 				assert.ok(error);
+				assert.equal(error.message, "Get-ItemProperty : Cannot find path 'HKU\\.DEFAULT\\Control Panel\\International\\Geo' because it does not exist.");
 				assert.equal(error.exitStatus, 1);
 				cb();
 			} catch (ex) {
@@ -113,9 +147,11 @@ describe("geo", () => {
 	});
 
 	describe("spawn error", () => {
-		before(() => {
-			childProcessMock.spawn = childProcessMock.spawnSync = () => {
-				throw new Error("spawn mock ENOENT");
+		beforeEach(() => {
+			regMock["HKU\\.DEFAULT\\Control Panel\\International\\Geo\\Nation"] = () => {
+				return {
+					error: new Error("spawn mock ENOENT"),
+				};
 			};
 		});
 		it("sync", cb => {
@@ -134,6 +170,100 @@ describe("geo", () => {
 				try {
 					assert.ok(error);
 					assert.equal(error.message, "spawn mock ENOENT");
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+	});
+
+	describe("Exited with status 1", () => {
+		beforeEach(() => {
+			regMock["HKU\\.DEFAULT\\Control Panel\\International\\Geo\\Nation"] = () => {
+				return {
+					status: 1,
+				};
+			};
+		});
+		it("sync", cb => {
+			geoSync((error, result) => {
+				try {
+					assert.ok(error);
+					assert.equal(error.message, "Exited with status 1");
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+		it("async", cb => {
+			geoAsync((error, result) => {
+				try {
+					assert.ok(error);
+					assert.equal(error.message, "Exited with status 1");
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+	});
+
+	describe("stdout not match", () => {
+		beforeEach(() => {
+			regMock["HKU\\.DEFAULT\\Control Panel\\International\\Geo\\Nation"] = () => {
+				return {
+					stdout: Buffer.from("not exist"),
+				};
+			};
+		});
+		it("sync", cb => {
+			geoSync((error, result) => {
+				try {
+					assert.equal(error, "not exist");
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+		it("async", cb => {
+			geoAsync((error, result) => {
+				try {
+					assert.equal(error, "not exist");
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+	});
+
+	describe("stdout not match for reg.exe", () => {
+		beforeEach(() => {
+			regMock["HKU\\.DEFAULT\\Control Panel\\International\\Geo\\Nation"] = () => {
+				return {
+					stdout: Buffer.from("45\r\n"),
+				};
+			};
+		});
+		it("sync", cb => {
+			geoSync((error, result) => {
+				try {
+					assert.equal(result, "45");
+					assert.equal(error, null);
+					cb();
+				} catch (ex) {
+					cb(ex);
+				}
+			});
+		});
+		it("async", cb => {
+			geoAsync((error, result) => {
+				try {
+					assert.equal(result, "45");
+					assert.equal(error, null);
 					cb();
 				} catch (ex) {
 					cb(ex);
