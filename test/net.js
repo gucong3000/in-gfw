@@ -19,21 +19,41 @@ describe("inGFW.net()", () => {
 			assert.equal(inGFW, result);
 		});
 	});
+
+	it("inGFW.netSync()", () => {
+		assert.equal(inGFW.netSync(), result);
+	});
+
 	it("inGFW.net() whth hostname", () => {
 		return inGFW.net("www.google.com", "www.baidu.com").then(inGFW => {
 			assert.equal(inGFW, result);
 		});
 	});
+
+	it("inGFW.netSync() whth hostname", () => {
+		assert.equal(inGFW.netSync("www.google.com", "www.baidu.com"), result);
+	});
+
 	it("inGFW.net() whth https url", () => {
 		return inGFW.net("https://www.google.com", "https://www.baidu.com").then(inGFW => {
 			assert.equal(inGFW, result);
 		});
 	});
+
+	it("inGFW.netSync() whth https url", () => {
+		assert.equal(inGFW.netSync("https://www.google.com", "https://www.baidu.com"), result);
+	});
+
 	it("inGFW.net() whth http url", () => {
 		return inGFW.net("http://www.google.com", "http://www.baidu.com").then(inGFW => {
 			assert.equal(inGFW, result);
 		});
 	});
+
+	it("inGFW.netSync() whth http url", () => {
+		assert.equal(inGFW.netSync("http://www.google.com", "http://www.baidu.com"), result);
+	});
+
 	it("inGFW.net() whth object", () => {
 		return inGFW.net(
 			url.parse("https://www.google.com"),
@@ -42,15 +62,38 @@ describe("inGFW.net()", () => {
 			assert.equal(inGFW, result);
 		});
 	});
+
+	it("inGFW.netSync() whth object", () => {
+		assert.equal(inGFW.netSync(
+			url.parse("https://www.google.com"),
+			url.parse("https://www.baidu.com")
+		), result);
+	});
+
 	it("inGFW.net() error `ENOTFOUND`", cb => {
 		inGFW.net(
 			"test.notexist",
 			"test.notexist"
 		).catch(error => {
-			assert.equal(error.errno, "ENOTFOUND");
+			assert.equal(error.errno || error.code, "ENOTFOUND");
 			cb();
 		});
 	});
+
+	it("inGFW.netSync() error `ENOTFOUND`", () => {
+		assert.throws(
+			() => {
+				inGFW.netSync(
+					"test.notexist",
+					"test.notexist"
+				);
+			},
+			(error) => {
+				return (error.errno || error.code) === "ENOTFOUND";
+			}
+		);
+	});
+
 	if (isWsl) {
 		return;
 	}

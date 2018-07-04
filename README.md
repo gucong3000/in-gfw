@@ -18,15 +18,18 @@ npm install in-gfw
 
 ```js
 const inGFW = require("in-gfw");
+inGFW().then(console.log);	// `true` for located in mainland China
 inGFW.os().then(console.log);	// `true` for system located in mainland China
-```
-
-```js
-const inGFW = require("in-gfw");
 inGFW.net().then(console.log);	// `true` for network located in mainland China
 ```
 
 ## API
+
+```js
+inGFW(blockedHost, cnHost);
+inGFW.sync(blockedHost, cnHost);	// Synchronous version of `inGFW()`
+```
+Get result by `inGFW.os()` and fallback to `inGFW.net()`
 
 ```js
 inGFW.os();
@@ -39,6 +42,7 @@ inGFW.osSync();	// Synchronous version of `inGFW.os()`
 
 ```js
 inGFW.net(blockedHost, cnHost);
+inGFW.netSync(blockedHost, cnHost);	// Synchronous version of `inGFW.net()`
 ```
 Based on the speed of network access to identify if current location is located in mainland China.
 
