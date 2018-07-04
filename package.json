@@ -1,11 +1,11 @@
 {
   "name": "in-gfw",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Identify current location is located in mainland China.",
   "main": "lib/index.js",
   "nyc": {
     "require": [
-      "babel-register"
+      "@babel/register"
     ],
     "reporter": [
       "lcov",
@@ -16,16 +16,16 @@
   "babel": {
     "presets": [
       [
-        "env"
+        "@babel/env"
       ]
     ],
     "plugins": [
-      "transform-runtime"
+      "@babel/transform-runtime"
     ]
   },
   "scripts": {
     "report-coverage": "codecov",
-    "pretest": "eslint *.js lib test",
+    "pretest": "eslint lib test",
     "test": "node . && nyc mocha --no-timeouts"
   },
   "repository": {
@@ -51,15 +51,16 @@
   },
   "homepage": "https://github.com/gucong3000/in-gfw#readme",
   "devDependencies": {
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.7.0",
-    "babel-register": "^6.26.0",
-    "babel-runtime": "^6.26.0",
+    "@babel/core": "^7.0.0-beta.51",
+    "@babel/plugin-transform-runtime": "^7.0.0-beta.51",
+    "@babel/preset-env": "^7.0.0-beta.51",
+    "@babel/register": "^7.0.0-beta.51",
+    "@babel/runtime": "^7.0.0-beta.51",
     "ci-info": "^1.1.3",
     "codecov": "^3.0.2",
-    "eslint": "^4.19.1",
+    "eslint": "^5.0.1",
     "eslint-config-standard": "^11.0.0",
-    "eslint-plugin-import": "^2.12.0",
+    "eslint-plugin-import": "^2.13.0",
     "eslint-plugin-node": "^6.0.1",
     "eslint-plugin-promise": "^3.8.0",
     "eslint-plugin-standard": "^3.1.0",
@@ -72,6 +73,6 @@
   "dependencies": {
     "glob": "^7.1.2",
     "is-wsl": "^1.1.0",
-    "mem": "^3.0.0"
+    "mem": "^3.0.1"
   }
 }
